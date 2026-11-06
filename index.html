@@ -41,16 +41,30 @@ font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,
 .sb{font-size:16px;font-weight:600;line-height:1.25}
 .meta{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;color:var(--hint);font-size:14px}
 .live{color:var(--green);font-size:12px;font-weight:700;margin-left:6px}
+.seg{display:flex;background:var(--card);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:0;background:none;color:var(--hint);padding:8px 6px;border-radius:9px;font-size:15px;font-weight:600;font-family:inherit}
+.seg button.on{background:var(--card2);color:var(--fg)}
+select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:14px;padding:14px 16px;font-size:16px;font-family:inherit;margin-bottom:12px}
+.after{color:var(--hint);text-align:center;font-size:14px;margin:6px 0 14px}
 .empty{padding:18px 16px;color:var(--hint);text-align:center}
 </style>
 </head>
 <body>
 <div class="large" id="h1">Расписание</div>
 <div class="sub" id="h2">П-51БС · сессия 9–28 ноября</div>
+<div class="seg" id="tabs"><button id="tabM" class="on">Сегодня</button><button id="tabS">Поиск</button></div>
+<div id="main">
 <div id="hero"></div>
 <div class="nav"><button id="prev">‹</button><b id="dlabel"></b><button id="next">›</button></div>
 <div style="text-align:center"><button id="today">Сегодня</button></div>
 <div class="list" id="list"></div>
+</div>
+<div id="search" style="display:none">
+<div class="seg"><button id="kS" class="on">Предмет</button><button id="kT">Преподаватель</button></div>
+<select id="sel"></select>
+<div class="seg"><button id="mN" class="on">Ближайшая</button><button id="mA">Все занятия</button></div>
+<div id="sres"></div>
+</div>
 <script>
 const tg = window.Telegram && Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor('#000000'); tg.setHeaderColor('#000000'); } catch (e) {} }
@@ -144,10 +158,71 @@ function render() {
       <div class="meta">${badge(l)} ${place(l)}${l.teacher ? '<span>' + esc(l.teacher) + '</span>' : ''}</div></div></div>`;
   }).join('') : '<div class="empty">В этот день занятий нет</div>';
 }
+
+let tab = 'm', skind = 'subject', sval = '', smode = 'next';
+const timed = l => { const b = S.bells[dow(l.date) === 6 ? 'saturday' : 'weekday'][l.pair - 1] || []; return {...l, s: toMin(l.start || b[0]), e: toMin(l.end || b[1])}; };
+const key = (l, kind) => kind === 'teacher' ? (l.teacher || '').replace(/^(ст\.преподаватель|преподаватель|доцент|профессор)\s+/, '') : l.subject;
+const options = kind => [...new Set(S.lessons.filter(l => !l.allday && key(l, kind)).map(l => key(l, kind)))].sort((a, b) => a.localeCompare(b, 'ru'));
+const searchData = (kind, val) => S.lessons.filter(l => !l.allday && key(l, kind) === val).map(timed).sort((a, b) => a.date === b.date ? a.s - b.s : a.date < b.date ? -1 : 1);
+const upcomingIdx = (arr, n) => arr.findIndex(l => l.date > n.date || (l.date === n.date && l.e * 60 > n.sec));
+function rel(l, n) {
+  const d = Math.round((new Date(l.date) - new Date(n.date)) / 864e5);
+  if (d < 0) return 'прошло';
+  if (d === 0) {
+    if (n.sec >= l.e * 60) return 'уже прошло';
+    if (n.sec >= l.s * 60) return 'идёт сейчас, до конца ' + fmt(l.e * 60 - n.sec);
+    const m = Math.ceil((l.s * 60 - n.sec) / 60);
+    return 'сегодня в ' + hhmm(l.s) + ', через ' + (m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин' : m + ' мин');
+  }
+  return d === 1 ? 'завтра' : 'через ' + d + ' дн.';
+}
+function renderResults() {
+  const el = document.getElementById('sres'); if (!S) return;
+  if (!sval) { el.innerHTML = `<div class="empty">Выбери ${skind === 'subject' ? 'предмет' : 'преподавателя'} выше</div>`; return; }
+  const n = now(), arr = searchData(skind, sval), i = upcomingIdx(arr, n);
+  const info = l => `${badge(l)} <span>${l.pair ? 'пара ' + l.pair : ''}</span> <span>${place(l)}</span>`;
+  if (smode === 'next') {
+    if (i < 0) { el.innerHTML = '<div class="card center"><div class="title">Больше занятий нет</div><div class="hint">Все уже прошли</div></div>'; return; }
+    const l = arr[i], rest = arr.length - i - 1;
+    el.innerHTML = `<div class="card"><div class="cap center">Ближайшее занятие</div>
+      <div class="title" style="margin-bottom:2px">${human(l.date)}</div>
+      <div class="center"><div class="big" style="font-size:30px">${hhmm(l.s)}–${hhmm(l.e)}</div><div class="hint">${rel(l, n)}</div></div>
+      <div class="next"><b>${esc(l.subject)}</b><div class="meta">${info(l)}</div>${l.teacher ? `<div class="hint" style="margin-top:4px">${esc(l.teacher)}</div>` : ''}</div></div>`
+      + (rest > 0 ? `<div class="after">Ещё занятий после этого: ${rest}</div>` : '<div class="after">Это последнее занятие</div>');
+    return;
+  }
+  if (!arr.length) { el.innerHTML = '<div class="empty">Занятий не найдено</div>'; return; }
+  const cnt = {}; arr.forEach(l => cnt[l.type] = (cnt[l.type] || 0) + 1);
+  const days = new Set(arr.map(l => l.date)).size;
+  el.innerHTML = `<div class="card center"><div class="title" style="margin:0 0 4px">${arr.length} занят. · ${days} дн.</div>
+    <div class="hint">${Object.entries(cnt).map(([k, v]) => k + ' ' + v).join(' · ')}</div></div>
+    <div class="list">` + arr.map(l => {
+      const past = l.date < n.date || (l.date === n.date && n.sec >= l.e * 60);
+      return `<div class="row ${past ? 'done' : ''}"><div class="dot" style="background:${color(l)}"></div>
+        <div class="tm">${hhmm(l.s)}<span>${hhmm(l.e)}</span></div>
+        <div style="flex:1"><div class="cap">${human(l.date)}${past ? '' : ' · ' + rel(l, n)}</div>
+        <div class="sb">${esc(skind === 'teacher' ? l.subject : (l.teacher || l.subject))}</div><div class="meta">${info(l)}</div></div></div>`;
+    }).join('') + '</div>';
+}
 document.getElementById('prev').onclick = () => { view = addDays(view, -1); render(); };
 document.getElementById('next').onclick = () => { view = addDays(view, 1); render(); };
 document.getElementById('today').onclick = () => { view = now().date; render(); };
-fetch('schedule.json').then(r => r.json()).then(j => { S = j; TZ = j.timezone; render(); setInterval(render, 1000); })
+
+const $ = id => document.getElementById(id);
+function seg(on, off) { $(on).classList.add('on'); off.forEach(x => $(x).classList.remove('on')); }
+function fillOptions() {
+  $('sel').innerHTML = `<option value="">${skind === 'subject' ? 'Выбери предмет' : 'Выбери преподавателя'}</option>` + options(skind).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  sval = '';
+}
+function setTab(t) { tab = t; $('main').style.display = t === 'm' ? '' : 'none'; $('search').style.display = t === 's' ? '' : 'none';
+  t === 'm' ? seg('tabM', ['tabS']) : seg('tabS', ['tabM']); if (t === 's') renderResults(); }
+$('tabM').onclick = () => setTab('m'); $('tabS').onclick = () => setTab('s');
+$('kS').onclick = () => { skind = 'subject'; seg('kS', ['kT']); fillOptions(); renderResults(); };
+$('kT').onclick = () => { skind = 'teacher'; seg('kT', ['kS']); fillOptions(); renderResults(); };
+$('mN').onclick = () => { smode = 'next'; seg('mN', ['mA']); renderResults(); };
+$('mA').onclick = () => { smode = 'all'; seg('mA', ['mN']); renderResults(); };
+$('sel').onchange = e => { sval = e.target.value; renderResults(); };
+fetch('schedule.json').then(r => r.json()).then(j => { S = j; TZ = j.timezone; fillOptions(); render(); setInterval(render, 1000); setInterval(() => { if (tab === 's') renderResults(); }, 30000); })
   .catch(() => document.getElementById('hero').innerHTML = '<div class="card">Не удалось загрузить schedule.json</div>');
 </script>
 </body>
