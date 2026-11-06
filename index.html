@@ -3,36 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
 <title>Расписание П-51БС</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root{--bg:#fff;--fg:#1c1c1e;--hint:#8e8e93;--card:#f2f2f7;--accent:#2481cc;--ok:#34a853;--warn:#f59e0b}
-@media (prefers-color-scheme:dark){:root{--bg:#18191a;--fg:#f2f2f2;--hint:#9a9aa0;--card:#242526}}
-*{box-sizing:border-box}
-body{margin:0;padding:14px 14px calc(20px + env(safe-area-inset-bottom));background:var(--tg-theme-bg-color,var(--bg));color:var(--tg-theme-text-color,var(--fg));font:16px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif}
-.card{background:var(--tg-theme-secondary-bg-color,var(--card));border-radius:16px;padding:16px;margin-bottom:12px}
-.hint{color:var(--tg-theme-hint-color,var(--hint));font-size:14px}
-.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:13px;color:#fff;background:var(--tg-theme-button-color,var(--accent))}
-.big{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;margin:6px 0}
-.title{font-size:19px;font-weight:600;margin:8px 0 4px}
-.bar{height:8px;border-radius:4px;background:rgba(128,128,128,.25);overflow:hidden;margin-top:8px}
-.bar i{display:block;height:100%;background:var(--ok);transition:width 1s linear}
-.nav{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
-.nav button{border:0;border-radius:10px;padding:8px 14px;font-size:18px;background:var(--tg-theme-secondary-bg-color,var(--card));color:inherit}
-.row{display:flex;gap:10px;padding:10px 0;border-top:1px solid rgba(128,128,128,.2)}
-.row:first-child{border-top:0}.row.now{font-weight:600}.row.done{opacity:.45}
-.num{min-width:26px;color:var(--tg-theme-hint-color,var(--hint))}
-.t{min-width:84px;font-variant-numeric:tabular-nums}
-.exam{background:var(--warn)}
+:root{color-scheme:dark;--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--fg:#fff;--hint:#8e8e93;--sep:rgba(84,84,88,.55);
+--blue:#0a84ff;--green:#30d158;--orange:#ff9f0a;--purple:#bf5af2;--gray:#98989d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#000}
+body{margin:0;padding:calc(14px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));color:var(--fg);
+font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.large{font-size:34px;font-weight:700;letter-spacing:-.4px;margin:4px 4px 2px}
+.sub{color:var(--hint);font-size:15px;margin:0 4px 16px}
+.card{background:var(--card);border-radius:22px;padding:20px;margin-bottom:14px}
+.hint{color:var(--hint);font-size:14px}
+.cap{color:var(--hint);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.ringwrap{position:relative;width:176px;height:176px;margin:10px auto 6px}
+.ringwrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ringwrap .in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big{font-size:38px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1.05}
+.title{font-size:22px;font-weight:700;letter-spacing:-.3px;text-align:center;margin:10px 0 8px;line-height:1.2}
+.center{text-align:center}
+.pill{display:inline-block;padding:3px 11px;border-radius:99px;font-size:13px;font-weight:600}
+.next{background:var(--card2);border-radius:14px;padding:12px 14px;margin-top:16px;font-size:15px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px;gap:8px}
+.nav b{font-size:17px;text-align:center;flex:1}
+.nav button{border:0;border-radius:50%;width:38px;height:38px;font-size:20px;background:var(--card);color:var(--blue);padding:0}
+.nav button:active{background:var(--card2)}
+#today{display:none;margin:0 auto 10px;border:0;border-radius:99px;background:var(--card);color:var(--blue);font-size:15px;padding:7px 16px}
+.list{background:var(--card);border-radius:22px;padding:4px 0;overflow:hidden}
+.row{display:flex;gap:12px;padding:13px 16px;position:relative;align-items:flex-start}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--sep)}
+.row.now{background:var(--card2)}.row.done{opacity:.4}
+.tm{min-width:50px;font-variant-numeric:tabular-nums;font-size:16px;font-weight:600;line-height:1.25}
+.tm span{display:block;color:var(--hint);font-weight:400;font-size:14px}
+.dot{width:4px;align-self:stretch;border-radius:2px;flex:none}
+.sb{font-size:16px;font-weight:600;line-height:1.25}
+.meta{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;color:var(--hint);font-size:14px}
+.live{color:var(--green);font-size:12px;font-weight:700;margin-left:6px}
+.empty{padding:18px 16px;color:var(--hint);text-align:center}
 </style>
 </head>
 <body>
+<div class="large" id="h1">Расписание</div>
+<div class="sub" id="h2">П-51БС · сессия 9–28 ноября</div>
 <div id="hero"></div>
 <div class="nav"><button id="prev">‹</button><b id="dlabel"></b><button id="next">›</button></div>
-<div class="card" id="list"></div>
+<div style="text-align:center"><button id="today">Сегодня</button></div>
+<div class="list" id="list"></div>
 <script>
 const tg = window.Telegram && Telegram.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
+if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor('#000000'); tg.setHeaderColor('#000000'); } catch (e) {} }
 const DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
 const MON = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 let S, view = null, TZ = 'Asia/Yekaterinburg';
@@ -59,41 +80,51 @@ function dayItems(date) {
   }).sort((a, b) => (a.s ?? -1) - (b.s ?? -1));
 }
 const isExam = l => /ЗАЧЕТ|ЭКЗАМЕН|защита/.test(l.type);
-const badge = l => `<span class="badge ${isExam(l) ? 'exam' : ''}">${esc(l.type)}</span>`;
+const color = l => isExam(l) ? 'var(--orange)' : /лаб/.test(l.type) ? 'var(--purple)' : /практика/.test(l.type) ? 'var(--green)' : /лекция/.test(l.type) ? 'var(--blue)' : 'var(--gray)';
+const badge = l => `<span class="pill" style="color:${color(l)};background:color-mix(in srgb, ${color(l)} 18%, transparent)">${esc(l.type)}</span>`;
 const place = l => l.room ? `ауд. ${esc(l.room)}` : '';
+
+function ring(frac, col, big, small) {
+  const C = 2 * Math.PI * 52, off = C * (1 - Math.min(1, Math.max(0, frac)));
+  return `<div class="ringwrap"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="9"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
+    <div class="in"><div class="big">${big}</div><div class="hint">${small}</div></div></div>`;
+}
 
 function hero(n) {
   const items = dayItems(n.date).filter(l => !l.allday), cur = n.sec;
   const cl = items.find(l => cur >= l.s * 60 && cur < l.e * 60);
   const nx = items.find(l => l.s * 60 > cur);
   if (cl) {
-    const total = (cl.e - cl.s) * 60, left = cl.e * 60 - cur;
-    const nextTxt = nx ? `Дальше: ${nx.pair ? 'пара ' + nx.pair + ', ' : ''}${esc(nx.subject)} в ${hhmm(nx.s)}` + (nx.s - cl.e <= 0 ? '' : nx.s - cl.e >= 40 ? ` (обед ${nx.s - cl.e} мин)` : ` (перерыв ${nx.s - cl.e} мин)`) : 'Это последняя пара на сегодня';
-    return `<div class="card"><div class="hint">Идёт ${cl.pair ? 'пара ' + cl.pair : 'занятие'} · ${hhmm(cl.s)}–${hhmm(cl.e)}</div>
-      <div class="title">${esc(cl.subject)}</div>${badge(cl)} <span class="hint">${place(cl)}</span>
-      <div class="hint" style="margin-top:6px">${esc(cl.teacher || '')}</div>
-      <div class="big">${fmt(left)}</div><div class="hint">до конца</div>
-      <div class="bar"><i style="width:${(100 * (total - left) / total).toFixed(1)}%"></i></div>
-      <div class="hint" style="margin-top:10px">${nextTxt}</div></div>`;
+    const total = (cl.e - cl.s) * 60, left = cl.e * 60 - cur, gap = nx ? nx.s - cl.e : 0;
+    const nextTxt = nx ? `<b>Дальше:</b> ${nx.pair ? 'пара ' + nx.pair + ' · ' : ''}${esc(nx.subject)}, ${hhmm(nx.s)}` + (gap <= 0 ? '' : gap >= 40 ? `<div class="hint">Обед ${gap} мин</div>` : `<div class="hint">Перерыв ${gap} мин</div>`) : 'Это последняя пара на сегодня';
+    return `<div class="card"><div class="cap center">${cl.pair ? 'Пара ' + cl.pair : 'Занятие'} · ${hhmm(cl.s)}–${hhmm(cl.e)}</div>
+      ${ring((total - left) / total, 'var(--green)', fmt(left), 'до конца')}
+      <div class="title">${esc(cl.subject)}</div>
+      <div class="center">${badge(cl)} <span class="hint">&nbsp;${place(cl)}</span></div>
+      ${cl.teacher ? `<div class="hint center" style="margin-top:8px">${esc(cl.teacher)}</div>` : ''}
+      <div class="next">${nextTxt}</div></div>`;
   }
   if (nx) {
     const prev = [...items].reverse().find(l => l.e * 60 <= cur);
-    const gap = prev ? nx.s - prev.e : null;
+    const gap = prev ? nx.s - prev.e : null, frac = prev ? (cur - prev.e * 60) / (gap * 60) : 0;
     const kind = gap >= 40 ? 'Обед' : prev ? 'Перерыв' : 'До начала';
-    return `<div class="card"><div class="hint">${kind}${gap ? ' · ' + gap + ' мин всего' : ''}</div>
-      <div class="big">${fmt(nx.s * 60 - cur)}</div><div class="hint">до начала</div>
-      <div class="title">${nx.pair ? 'Пара ' + nx.pair + ': ' : ''}${esc(nx.subject)}</div>${badge(nx)} <span class="hint">${place(nx)} · ${hhmm(nx.s)}–${hhmm(nx.e)}</span></div>`;
+    return `<div class="card"><div class="cap center">${kind}${gap ? ' · ' + gap + ' мин' : ''}</div>
+      ${ring(frac, 'var(--blue)', fmt(nx.s * 60 - cur), 'до начала')}
+      <div class="cap center" style="margin-top:6px">Следом${nx.pair ? ' · пара ' + nx.pair : ''} · ${hhmm(nx.s)}–${hhmm(nx.e)}</div>
+      <div class="title">${esc(nx.subject)}</div>
+      <div class="center">${badge(nx)} <span class="hint">&nbsp;${place(nx)}</span></div></div>`;
   }
   const allday = dayItems(n.date).find(l => l.allday);
-  if (allday) return `<div class="card"><div class="title">${esc(allday.subject)}</div><div class="hint">Занятий по расписанию нет</div></div>`;
-  if (items.length) return `<div class="card"><div class="title">На сегодня всё 🎉</div><div class="hint">Пары закончились</div></div>`;
+  if (allday) return `<div class="card center"><div class="title">${esc(allday.subject)}</div><div class="hint">Занятий по расписанию нет</div></div>`;
+  if (items.length) return `<div class="card center"><div class="title">На сегодня всё 🎉</div><div class="hint">Пары закончились</div></div>`;
   return null;
 }
 function upcoming(n) {
-  const next = S.lessons.map(l => l.date).filter(d => d > n.date || (d === n.date && false)).sort()[0];
-  if (!next) return `<div class="card"><div class="title">Расписание закончилось</div></div>`;
+  const next = S.lessons.map(l => l.date).filter(d => d > n.date).sort()[0];
+  if (!next) return `<div class="card center"><div class="title">Расписание закончилось</div></div>`;
   const first = dayItems(next).find(l => !l.allday), days = Math.round((new Date(next) - new Date(n.date)) / 864e5);
-  return `<div class="card"><div class="hint">Сегодня занятий нет</div>
+  return `<div class="card center"><div class="cap">Сегодня занятий нет</div>
     <div class="title">Ближайший день: ${human(next)}</div>
     <div class="hint">через ${days} дн.${first ? ` · первое занятие в ${hhmm(first.s)}` : ''}</div></div>`;
 }
@@ -102,15 +133,20 @@ function render() {
   const n = now(); if (!view) view = n.date;
   document.getElementById('hero').innerHTML = hero(n) || upcoming(n);
   document.getElementById('dlabel').textContent = (view === n.date ? 'Сегодня · ' : '') + human(view);
+  document.getElementById('today').style.display = view === n.date ? 'none' : 'inline-block';
   const items = dayItems(view);
   document.getElementById('list').innerHTML = items.length ? items.map(l => {
-    const cls = view === n.date && !l.allday ? (n.sec >= l.e * 60 ? 'done' : n.sec >= l.s * 60 ? 'now' : '') : '';
-    return `<div class="row ${cls}"><div class="num">${l.pair ?? ''}</div><div class="t">${l.allday ? 'весь день' : hhmm(l.s) + '–' + hhmm(l.e)}</div>
-      <div><div>${esc(l.subject)}</div><div class="hint">${badge(l)} ${place(l)}${l.teacher ? ' · ' + esc(l.teacher) : ''}</div></div></div>`;
-  }).join('') : '<div class="hint">В этот день занятий нет</div>';
+    const live = view === n.date && !l.allday && n.sec >= l.s * 60 && n.sec < l.e * 60;
+    const cls = view === n.date && !l.allday ? (n.sec >= l.e * 60 ? 'done' : live ? 'now' : '') : '';
+    return `<div class="row ${cls}"><div class="dot" style="background:${color(l)}"></div>
+      <div class="tm">${l.allday ? '<span>весь день</span>' : hhmm(l.s) + '<span>' + hhmm(l.e) + '</span>'}</div>
+      <div style="flex:1"><div class="sb">${l.pair ? l.pair + '. ' : ''}${esc(l.subject)}${live ? '<span class="live">СЕЙЧАС</span>' : ''}</div>
+      <div class="meta">${badge(l)} ${place(l)}${l.teacher ? '<span>' + esc(l.teacher) + '</span>' : ''}</div></div></div>`;
+  }).join('') : '<div class="empty">В этот день занятий нет</div>';
 }
 document.getElementById('prev').onclick = () => { view = addDays(view, -1); render(); };
 document.getElementById('next').onclick = () => { view = addDays(view, 1); render(); };
+document.getElementById('today').onclick = () => { view = now().date; render(); };
 fetch('schedule.json').then(r => r.json()).then(j => { S = j; TZ = j.timezone; render(); setInterval(render, 1000); })
   .catch(() => document.getElementById('hero').innerHTML = '<div class="card">Не удалось загрузить schedule.json</div>');
 </script>
