@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Расписание П-51БС</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#fff;--fg:#1c1c1e;--hint:#8e8e93;--card:#f2f2f7;--accent:#2481cc;--ok:#34a853;--warn:#f59e0b}
+@media (prefers-color-scheme:dark){:root{--bg:#18191a;--fg:#f2f2f2;--hint:#9a9aa0;--card:#242526}}
+*{box-sizing:border-box}
+body{margin:0;padding:14px 14px calc(20px + env(safe-area-inset-bottom));background:var(--tg-theme-bg-color,var(--bg));color:var(--tg-theme-text-color,var(--fg));font:16px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif}
+.card{background:var(--tg-theme-secondary-bg-color,var(--card));border-radius:16px;padding:16px;margin-bottom:12px}
+.hint{color:var(--tg-theme-hint-color,var(--hint));font-size:14px}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:13px;color:#fff;background:var(--tg-theme-button-color,var(--accent))}
+.big{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;margin:6px 0}
+.title{font-size:19px;font-weight:600;margin:8px 0 4px}
+.bar{height:8px;border-radius:4px;background:rgba(128,128,128,.25);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--ok);transition:width 1s linear}
+.nav{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
+.nav button{border:0;border-radius:10px;padding:8px 14px;font-size:18px;background:var(--tg-theme-secondary-bg-color,var(--card));color:inherit}
+.row{display:flex;gap:10px;padding:10px 0;border-top:1px solid rgba(128,128,128,.2)}
+.row:first-child{border-top:0}.row.now{font-weight:600}.row.done{opacity:.45}
+.num{min-width:26px;color:var(--tg-theme-hint-color,var(--hint))}
+.t{min-width:84px;font-variant-numeric:tabular-nums}
+.exam{background:var(--warn)}
+</style>
+</head>
+<body>
+<div id="hero"></div>
+<div class="nav"><button id="prev">‹</button><b id="dlabel"></b><button id="next">›</button></div>
+<div class="card" id="list"></div>
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+const MON = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+let S, view = null, TZ = 'Asia/Yekaterinburg';
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+function now() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).formatToParts(new Date()).map(x => [x.type, x.value]));
+  return {date: `${p.year}-${p.month}-${p.day}`, sec: (+p.hour) * 3600 + (+p.minute) * 60 + (+p.second)};
+}
+const dow = d => new Date(d + 'T00:00:00Z').getUTCDay();
+const addDays = (d, n) => new Date(new Date(d + 'T00:00:00Z').getTime() + n * 864e5).toISOString().slice(0, 10);
+const human = d => { const x = new Date(d + 'T00:00:00Z'); return `${x.getUTCDate()} ${MON[x.getUTCMonth()]}, ${DAYS[x.getUTCDay()]}`; };
+const fmt = s => { s = Math.max(0, s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), c = s % 60;
+  return (h ? h + ':' : '') + String(m).padStart(h ? 2 : 1, '0') + ':' + String(c).padStart(2, '0'); };
+
+function dayItems(date) {
+  const bells = S.bells[dow(date) === 6 ? 'saturday' : 'weekday'];
+  return S.lessons.filter(l => l.date === date).map(l => {
+    if (l.allday) return {...l, allday: true};
+    const b = bells[l.pair - 1] || [];
+    return {...l, s: toMin(l.start || b[0]), e: toMin(l.end || b[1])};
+  }).sort((a, b) => (a.s ?? -1) - (b.s ?? -1));
+}
+const isExam = l => /ЗАЧЕТ|ЭКЗАМЕН|защита/.test(l.type);
+const badge = l => `<span class="badge ${isExam(l) ? 'exam' : ''}">${esc(l.type)}</span>`;
+const place = l => l.room ? `ауд. ${esc(l.room)}` : '';
+
+function hero(n) {
+  const items = dayItems(n.date).filter(l => !l.allday), cur = n.sec;
+  const cl = items.find(l => cur >= l.s * 60 && cur < l.e * 60);
+  const nx = items.find(l => l.s * 60 > cur);
+  if (cl) {
+    const total = (cl.e - cl.s) * 60, left = cl.e * 60 - cur;
+    const nextTxt = nx ? `Дальше: ${nx.pair ? 'пара ' + nx.pair + ', ' : ''}${esc(nx.subject)} в ${hhmm(nx.s)}` + (nx.s - cl.e <= 0 ? '' : nx.s - cl.e >= 40 ? ` (обед ${nx.s - cl.e} мин)` : ` (перерыв ${nx.s - cl.e} мин)`) : 'Это последняя пара на сегодня';
+    return `<div class="card"><div class="hint">Идёт ${cl.pair ? 'пара ' + cl.pair : 'занятие'} · ${hhmm(cl.s)}–${hhmm(cl.e)}</div>
+      <div class="title">${esc(cl.subject)}</div>${badge(cl)} <span class="hint">${place(cl)}</span>
+      <div class="hint" style="margin-top:6px">${esc(cl.teacher || '')}</div>
+      <div class="big">${fmt(left)}</div><div class="hint">до конца</div>
+      <div class="bar"><i style="width:${(100 * (total - left) / total).toFixed(1)}%"></i></div>
+      <div class="hint" style="margin-top:10px">${nextTxt}</div></div>`;
+  }
+  if (nx) {
+    const prev = [...items].reverse().find(l => l.e * 60 <= cur);
+    const gap = prev ? nx.s - prev.e : null;
+    const kind = gap >= 40 ? 'Обед' : prev ? 'Перерыв' : 'До начала';
+    return `<div class="card"><div class="hint">${kind}${gap ? ' · ' + gap + ' мин всего' : ''}</div>
+      <div class="big">${fmt(nx.s * 60 - cur)}</div><div class="hint">до начала</div>
+      <div class="title">${nx.pair ? 'Пара ' + nx.pair + ': ' : ''}${esc(nx.subject)}</div>${badge(nx)} <span class="hint">${place(nx)} · ${hhmm(nx.s)}–${hhmm(nx.e)}</span></div>`;
+  }
+  const allday = dayItems(n.date).find(l => l.allday);
+  if (allday) return `<div class="card"><div class="title">${esc(allday.subject)}</div><div class="hint">Занятий по расписанию нет</div></div>`;
+  if (items.length) return `<div class="card"><div class="title">На сегодня всё 🎉</div><div class="hint">Пары закончились</div></div>`;
+  return null;
+}
+function upcoming(n) {
+  const next = S.lessons.map(l => l.date).filter(d => d > n.date || (d === n.date && false)).sort()[0];
+  if (!next) return `<div class="card"><div class="title">Расписание закончилось</div></div>`;
+  const first = dayItems(next).find(l => !l.allday), days = Math.round((new Date(next) - new Date(n.date)) / 864e5);
+  return `<div class="card"><div class="hint">Сегодня занятий нет</div>
+    <div class="title">Ближайший день: ${human(next)}</div>
+    <div class="hint">через ${days} дн.${first ? ` · первое занятие в ${hhmm(first.s)}` : ''}</div></div>`;
+}
+
+function render() {
+  const n = now(); if (!view) view = n.date;
+  document.getElementById('hero').innerHTML = hero(n) || upcoming(n);
+  document.getElementById('dlabel').textContent = (view === n.date ? 'Сегодня · ' : '') + human(view);
+  const items = dayItems(view);
+  document.getElementById('list').innerHTML = items.length ? items.map(l => {
+    const cls = view === n.date && !l.allday ? (n.sec >= l.e * 60 ? 'done' : n.sec >= l.s * 60 ? 'now' : '') : '';
+    return `<div class="row ${cls}"><div class="num">${l.pair ?? ''}</div><div class="t">${l.allday ? 'весь день' : hhmm(l.s) + '–' + hhmm(l.e)}</div>
+      <div><div>${esc(l.subject)}</div><div class="hint">${badge(l)} ${place(l)}${l.teacher ? ' · ' + esc(l.teacher) : ''}</div></div></div>`;
+  }).join('') : '<div class="hint">В этот день занятий нет</div>';
+}
+document.getElementById('prev').onclick = () => { view = addDays(view, -1); render(); };
+document.getElementById('next').onclick = () => { view = addDays(view, 1); render(); };
+fetch('schedule.json').then(r => r.json()).then(j => { S = j; TZ = j.timezone; render(); setInterval(render, 1000); })
+  .catch(() => document.getElementById('hero').innerHTML = '<div class="card">Не удалось загрузить schedule.json</div>');
+</script>
+</body>
+</html>
