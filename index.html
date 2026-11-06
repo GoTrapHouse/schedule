@@ -46,6 +46,16 @@ font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,
 .seg button.on{background:var(--card2);color:var(--fg)}
 select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:14px;padding:14px 16px;font-size:16px;font-family:inherit;margin-bottom:12px}
 .after{color:var(--hint);text-align:center;font-size:14px;margin:6px 0 14px}
+.strip{position:relative;display:flex;gap:8px;overflow-x:auto;margin:18px -16px 4px;padding:4px 16px 10px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.chip{flex:none;width:52px;border:0;border-radius:16px;background:var(--card);color:var(--fg);padding:8px 0 9px;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px}
+.chip span{font-size:12px;color:var(--hint);font-weight:600}
+.chip b{font-size:20px;font-weight:700}
+.chip i{width:6px;height:6px;border-radius:50%;margin-top:2px}
+.chip.past{opacity:.55}.chip.sun{opacity:.4}
+.chip.tod b{color:var(--blue)}
+.chip.sel{background:var(--blue);opacity:1}.chip.sel span{color:rgba(255,255,255,.85)}.chip.sel b{color:#fff}.chip.sel i{background:#fff!important}
+.dl{text-align:center;font-weight:600;margin:6px 0 10px}
 .empty{padding:18px 16px;color:var(--hint);text-align:center}
 </style>
 </head>
@@ -55,7 +65,8 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 <div class="seg" id="tabs"><button id="tabM" class="on">Сегодня</button><button id="tabS">Поиск</button></div>
 <div id="main">
 <div id="hero"></div>
-<div class="nav"><button id="prev">‹</button><b id="dlabel"></b><button id="next">›</button></div>
+<div class="strip" id="strip"></div>
+<div class="dl" id="dlabel"></div>
 <div style="text-align:center"><button id="today">Сегодня</button></div>
 <div class="list" id="list"></div>
 </div>
@@ -67,7 +78,7 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 </div>
 <script>
 const tg = window.Telegram && Telegram.WebApp;
-if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor('#000000'); tg.setHeaderColor('#000000'); } catch (e) {} }
+if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor('#000000'); tg.setHeaderColor('#000000'); tg.disableVerticalSwipes(); } catch (e) {} }
 const DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
 const MON = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 let S, view = null, TZ = 'Asia/Yekaterinburg';
@@ -143,11 +154,26 @@ function upcoming(n) {
     <div class="hint">через ${days} дн.${first ? ` · первое занятие в ${hhmm(first.s)}` : ''}</div></div>`;
 }
 
+
+let stripKey = '';
+const WD = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+const clampView = d => d < S.session.start ? S.session.start : d > S.session.end ? S.session.end : d;
+function buildStrip(n) {
+  const key = view + '|' + n.date; if (key === stripKey) return; stripKey = key;
+  let h = '', d = S.session.start;
+  while (d <= S.session.end) {
+    const its = S.lessons.filter(l => l.date === d), ex = its.some(isExam);
+    h += `<button class="chip ${d === view ? 'sel' : ''} ${d === n.date ? 'tod' : ''} ${d < n.date ? 'past' : ''} ${dow(d) === 0 ? 'sun' : ''}" data-d="${d}"><span>${WD[dow(d)]}</span><b>${+d.slice(8)}</b><i style="background:${its.length ? (ex ? 'var(--orange)' : 'var(--blue)') : 'transparent'}"></i></button>`;
+    d = addDays(d, 1);
+  }
+  const el = document.getElementById('strip'); el.innerHTML = h;
+  const c = el.querySelector('.sel'); if (c) el.scrollTo({left: c.offsetLeft - el.clientWidth / 2 + c.offsetWidth / 2, behavior: 'smooth'});
+}
 function render() {
-  const n = now(); if (!view) view = n.date;
+  const n = now(); if (!view) view = clampView(n.date); buildStrip(n);
   document.getElementById('hero').innerHTML = hero(n) || upcoming(n);
   document.getElementById('dlabel').textContent = (view === n.date ? 'Сегодня · ' : '') + human(view);
-  document.getElementById('today').style.display = view === n.date ? 'none' : 'inline-block';
+  document.getElementById('today').style.display = view === clampView(n.date) ? 'none' : 'inline-block';
   const items = dayItems(view);
   document.getElementById('list').innerHTML = items.length ? items.map(l => {
     const live = view === n.date && !l.allday && n.sec >= l.s * 60 && n.sec < l.e * 60;
@@ -204,9 +230,7 @@ function renderResults() {
         <div class="sb">${esc(skind === 'teacher' ? l.subject : (l.teacher || l.subject))}</div><div class="meta">${info(l)}</div></div></div>`;
     }).join('') + '</div>';
 }
-document.getElementById('prev').onclick = () => { view = addDays(view, -1); render(); };
-document.getElementById('next').onclick = () => { view = addDays(view, 1); render(); };
-document.getElementById('today').onclick = () => { view = now().date; render(); };
+document.getElementById('today').onclick = () => { view = clampView(now().date); render(); };
 
 const $ = id => document.getElementById(id);
 function seg(on, off) { $(on).classList.add('on'); off.forEach(x => $(x).classList.remove('on')); }
@@ -216,6 +240,17 @@ function fillOptions() {
 }
 function setTab(t) { tab = t; $('main').style.display = t === 'm' ? '' : 'none'; $('search').style.display = t === 's' ? '' : 'none';
   t === 'm' ? seg('tabM', ['tabS']) : seg('tabS', ['tabM']); if (t === 's') renderResults(); }
+
+$('strip').onclick = e => { const b = e.target.closest('.chip'); if (b) { view = b.dataset.d; render(); } };
+let tx = 0, ty = 0;
+$('main').addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive: true});
+$('main').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) < 60 || Math.abs(dy) > 50 || e.target.closest('#strip')) return;
+  const dir = dx < 0 ? 1 : -1;
+  if ((dir < 0 && view <= S.session.start) || (dir > 0 && view >= S.session.end)) return;
+  view = addDays(view, dir); render();
+});
 $('tabM').onclick = () => setTab('m'); $('tabS').onclick = () => setTab('s');
 $('kS').onclick = () => { skind = 'subject'; seg('kS', ['kT']); fillOptions(); renderResults(); };
 $('kT').onclick = () => { skind = 'teacher'; seg('kT', ['kS']); fillOptions(); renderResults(); };
