@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<meta http-equiv="Cache-Control" content="no-cache">
 <title>Расписание П-51БС</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -65,7 +66,7 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 </head>
 <body>
 <div class="large" id="h1">Расписание</div>
-<div class="sub" id="h2">П-51БС · сессия 9–28 ноября</div>
+<div class="sub" id="h2">П-51БС · сессия 9–28 ноября · v3</div>
 <div class="seg" id="tabs"><button id="tabM" class="on">Сегодня</button><button id="tabS">Поиск</button></div>
 <div id="main">
 <div id="hero"></div>
@@ -90,6 +91,8 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 </svg></div>
 <script>
 document.addEventListener('gesturestart', e => e.preventDefault());
+let lastTouch = 0;
+document.addEventListener('touchend', e => { const t = Date.now(); if (t - lastTouch < 400) e.preventDefault(); lastTouch = t; }, {passive: false});
 const tg = window.Telegram && Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor('#000000'); tg.setHeaderColor('#000000'); tg.disableVerticalSwipes(); } catch (e) {} }
 const DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
@@ -289,7 +292,7 @@ function scare() {
 }
 $('scare').onclick = scareStop;
 function egg() { eggClicks++; clearTimeout(eggTimer); eggTimer = setTimeout(() => eggClicks = 0, 3000); if (eggClicks >= 20) { eggClicks = 0; scare(); } }
-$('tabM').onclick = () => setTab('m'); $('tabS').onclick = () => { setTab('s'); egg(); };
+$('tabM').onclick = () => setTab('m'); $('tabS').onclick = () => setTab('s'); $('tabS').addEventListener('pointerdown', egg);
 $('kS').onclick = () => { skind = 'subject'; seg('kS', ['kT']); fillOptions(); renderResults(); };
 $('kT').onclick = () => { skind = 'teacher'; seg('kT', ['kS']); fillOptions(); renderResults(); };
 $('mN').onclick = () => { smode = 'next'; seg('mN', ['mA']); renderResults(); };
