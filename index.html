@@ -56,6 +56,10 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 .chip.tod b{color:var(--blue)}
 .chip.sel{background:var(--blue);opacity:1}.chip.sel span{color:rgba(255,255,255,.85)}.chip.sel b{color:#fff}.chip.sel i{background:#fff!important}
 .dl{text-align:center;font-weight:600;margin:6px 0 10px}
+#scare{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,#2a0000 0%,#000 70%);animation:flick .7s infinite alternate}
+#scare svg{width:min(92vw,70vh);height:auto;animation:shake .12s infinite;filter:drop-shadow(0 0 30px #f00)}
+@keyframes shake{0%{transform:translate(-4px,2px) scale(1.04)}25%{transform:translate(3px,-3px) scale(1.07)}50%{transform:translate(-2px,-4px) scale(1.05)}75%{transform:translate(4px,3px) scale(1.08)}100%{transform:translate(-3px,3px) scale(1.04)}}
+@keyframes flick{from{background-color:#000}to{background-color:#300}}
 .empty{padding:18px 16px;color:var(--hint);text-align:center}
 </style>
 </head>
@@ -76,6 +80,14 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 <div class="seg"><button id="mN" class="on">Ближайшая</button><button id="mA">Все занятия</button></div>
 <div id="sres"></div>
 </div>
+<div id="scare"><svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+<defs><radialGradient id="gl"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ff2a2a"/><stop offset="1" stop-color="#600" stop-opacity="0"/></radialGradient></defs>
+<ellipse cx="100" cy="130" rx="78" ry="110" fill="#0b0b0b" stroke="#400" stroke-width="3"/>
+<circle cx="66" cy="104" r="32" fill="url(#gl)"/><circle cx="134" cy="104" r="32" fill="url(#gl)"/>
+<ellipse cx="66" cy="106" rx="4" ry="16" fill="#000"/><ellipse cx="134" cy="106" rx="4" ry="16" fill="#000"/>
+<path d="M44 168 L58 156 L72 176 L86 154 L100 178 L114 154 L128 176 L142 156 L156 168 L149 206 L136 228 L120 212 L100 238 L80 212 L64 228 L51 206Z" fill="#000" stroke="#b00" stroke-width="2"/>
+<path d="M58 160 l6 22 l6 -18z M86 158 l7 26 l7 -26z M114 158 l7 26 l7 -26z M130 164 l6 20 l6 -18z M70 222 l6 -20 l6 20z M118 222 l6 -20 l6 20z" fill="#eee"/>
+</svg></div>
 <script>
 const tg = window.Telegram && Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor('#000000'); tg.setHeaderColor('#000000'); tg.disableVerticalSwipes(); } catch (e) {} }
@@ -251,7 +263,32 @@ $('main').addEventListener('touchend', e => {
   if ((dir < 0 && view <= S.session.start) || (dir > 0 && view >= S.session.end)) return;
   view = addDays(view, dir); render();
 });
-$('tabM').onclick = () => setTab('m'); $('tabS').onclick = () => setTab('s');
+
+let eggClicks = 0, eggTimer, scareTimer, scareCtx;
+function scareSound() {
+  try {
+    const ctx = scareCtx = new (window.AudioContext || window.webkitAudioContext)(); const t = ctx.currentTime;
+    const comp = ctx.createDynamicsCompressor(), master = ctx.createGain(); master.gain.value = 0.5; master.connect(comp); comp.connect(ctx.destination);
+    [55, 58.3, 110.7].forEach(f => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = f; g.gain.value = 0.22; o.connect(g); g.connect(master); o.start(t); o.stop(t + 10); });
+    const sc = ctx.createOscillator(), sg = ctx.createGain(); sc.type = 'sawtooth'; sg.gain.value = 0.0001; sc.connect(sg); sg.connect(master);
+    for (let k = 0; k < 4; k++) { const at = t + k * 2.5, f = 1100 + k * 180;
+      sc.frequency.setValueAtTime(f, at); sc.frequency.exponentialRampToValueAtTime(f * 1.7, at + 0.5); sc.frequency.exponentialRampToValueAtTime(f * 0.7, at + 1.3);
+      sg.gain.setValueAtTime(0.0001, at); sg.gain.exponentialRampToValueAtTime(0.35, at + 0.05); sg.gain.exponentialRampToValueAtTime(0.0001, at + 1.4); }
+    sc.start(t); sc.stop(t + 10);
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.6, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const ns = ctx.createBufferSource(), ng = ctx.createGain(); ns.buffer = buf; ng.gain.value = 0.5; ns.connect(ng); ng.connect(master); ns.start(t);
+  } catch (e) {}
+}
+function scareStop() { clearTimeout(scareTimer); $('scare').style.display = 'none'; try { scareCtx && scareCtx.close(); } catch (e) {} scareCtx = null; }
+function scare() {
+  $('scare').style.display = 'flex'; scareSound();
+  try { navigator.vibrate && navigator.vibrate([300, 100, 300, 100, 600]); tg && tg.HapticFeedback.notificationOccurred('error'); } catch (e) {}
+  scareTimer = setTimeout(scareStop, 10000);
+}
+$('scare').onclick = scareStop;
+function egg() { eggClicks++; clearTimeout(eggTimer); eggTimer = setTimeout(() => eggClicks = 0, 3000); if (eggClicks >= 20) { eggClicks = 0; scare(); } }
+$('tabM').onclick = () => setTab('m'); $('tabS').onclick = () => { setTab('s'); egg(); };
 $('kS').onclick = () => { skind = 'subject'; seg('kS', ['kT']); fillOptions(); renderResults(); };
 $('kT').onclick = () => { skind = 'teacher'; seg('kT', ['kS']); fillOptions(); renderResults(); };
 $('mN').onclick = () => { smode = 'next'; seg('mN', ['mA']); renderResults(); };
