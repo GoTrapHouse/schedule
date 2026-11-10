@@ -66,7 +66,7 @@ select{width:100%;background:var(--card);color:var(--fg);border:0;border-radius:
 </head>
 <body>
 <div class="large" id="h1">Расписание</div>
-<div class="sub" id="h2">П-51БС · сессия 9–28 ноября · v3</div>
+<div class="sub" id="h2">П-51БС · сессия 9–28 ноября · v4</div>
 <div class="seg" id="tabs"><button id="tabM" class="on">Сегодня</button><button id="tabS">Поиск</button></div>
 <div id="main">
 <div id="hero"></div>
@@ -122,7 +122,7 @@ function dayItems(date) {
 }
 const isExam = l => /ЗАЧЕТ|ЭКЗАМЕН|защита/.test(l.type);
 const color = l => isExam(l) ? 'var(--orange)' : /лаб/.test(l.type) ? 'var(--purple)' : /практика/.test(l.type) ? 'var(--green)' : /лекция/.test(l.type) ? 'var(--blue)' : 'var(--gray)';
-const badge = l => `<span class="pill" style="color:${color(l)};background:color-mix(in srgb, ${color(l)} 18%, transparent)">${esc(l.type)}</span>`;
+const badge = l => `<span class="pill" style="color:${color(l)};background:color-mix(in srgb, ${color(l)} 18%, transparent)">${esc(l.type)}</span>` + (l.track === 'align' ? ' <span class="pill" style="color:#d0b0ff;background:rgba(191,90,242,.22)">выравн. сессия</span>' : '');
 const place = l => l.room ? `ауд. ${esc(l.room)}` : '';
 
 function ring(frac, col, big, small) {
